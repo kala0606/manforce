@@ -41540,7 +41540,7 @@ if (typeof window !== 'undefined') {
   }
 }
 },{}],"shaders/fragmentBg.glsl":[function(require,module,exports) {
-module.exports = "#define GLSLIFY 1\nuniform float blur;\nuniform float ss1;\nuniform float ss2;\nuniform float ss3;\n\nuniform float hb;\nuniform float col1r;\nuniform float col1g;\nuniform float col1b;\nuniform float col2r;\nuniform float col2g;\nuniform float col2b;\nuniform sampler2D uTexture;\nuniform float sc;\nuniform float ba;\n\nvarying float pulse;\nvarying vec2 vUv;\nvarying vec3 vNormal;\nvarying vec3 vPosition;\n\nvec3 hsb2rgb( in vec3 c ){\n    vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),\n                             6.0)-3.0)-1.0,\n                     0.0,\n                     1.0 );\n    rgb = rgb*rgb*(3.0-2.0*rgb);\n    return c.z * mix( vec3(1.0), rgb, c.y);\n}\n\nfloat mod289(float x){return x - floor(x * (1.0 / 289.0)) * 289.0;}\nvec4 mod289(vec4 x){return x - floor(x * (1.0 / 289.0)) * 289.0;}\nvec4 perm(vec4 x){return mod289(((x * 32.0) + 1.0) * x);}\n\nfloat noise(vec3 p){\n    vec3 a = floor(p);\n    vec3 d = p - a;\n    d = d * d * (3.0 - 2.0 * d);\n\n    vec4 b = a.xxyy + vec4(0.0, 1.0, 0.0, 1.0);\n    vec4 k1 = perm(b.xyxy);\n    vec4 k2 = perm(k1.xyxy + b.zzww);\n\n    vec4 c = k2 + a.zzzz;\n    vec4 k3 = perm(c);\n    vec4 k4 = perm(c + 1.0);\n\n    vec4 o1 = fract(k3 * (1.0 / 41.0));\n    vec4 o2 = fract(k4 * (1.0 / 41.0));\n\n    vec4 o3 = o2 * d.z + o1 * (1.0 - d.z);\n    vec2 o4 = o3.yw * d.x + o3.xz * (1.0 - d.x);\n\n    return o4.y * d.y + o4.x * (1.0 - d.y);\n}\n\n// Simplex 2D noise\n//\nvec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }\n\nfloat noise(vec2 v){\n  const vec4 C = vec4(0.211324865405187, 0.366025403784439,\n           -0.577350269189626, 0.024390243902439);\n  vec2 i  = floor(v + dot(v, C.yy) );\n  vec2 x0 = v -   i + dot(i, C.xx);\n  vec2 i1;\n  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);\n  vec4 x12 = x0.xyxy + C.xxzz;\n  x12.xy -= i1;\n  i = mod(i, 289.0);\n  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))\n  + i.x + vec3(0.0, i1.x, 1.0 ));\n  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),\n    dot(x12.zw,x12.zw)), 0.0);\n  m = m*m ;\n  m = m*m ;\n  vec3 x = 2.0 * fract(p * C.www) - 1.0;\n  vec3 h = abs(x) - 0.5;\n  vec3 ox = floor(x + 0.5);\n  vec3 a0 = x - ox;\n  m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );\n  vec3 g;\n  g.x  = a0.x  * x0.x  + h.x  * x0.y;\n  g.yz = a0.yz * x12.xz + h.yz * x12.yw;\n  return 130.0 * dot(m, g);\n}\n//\tSimplex 3D Noise \n//\tby Ian McEwan, Ashima Arts\n//\nvec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}\nvec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}\n\nfloat snoise(vec3 v){ \n  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;\n  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);\n\n// First corner\n  vec3 i  = floor(v + dot(v, C.yyy) );\n  vec3 x0 =   v - i + dot(i, C.xxx) ;\n\n// Other corners\n  vec3 g = step(x0.yzx, x0.xyz);\n  vec3 l = 1.0 - g;\n  vec3 i1 = min( g.xyz, l.zxy );\n  vec3 i2 = max( g.xyz, l.zxy );\n\n  //  x0 = x0 - 0. + 0.0 * C \n  vec3 x1 = x0 - i1 + 1.0 * C.xxx;\n  vec3 x2 = x0 - i2 + 2.0 * C.xxx;\n  vec3 x3 = x0 - 1. + 3.0 * C.xxx;\n\n// Permutations\n  i = mod(i, 289.0 ); \n  vec4 p = permute( permute( permute( \n             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))\n           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) \n           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));\n\n// Gradients\n// ( N*N points uniformly over a square, mapped onto an octahedron.)\n  float n_ = 1.0/7.0; // N=7\n  vec3  ns = n_ * D.wyz - D.xzx;\n\n  vec4 j = p - 49.0 * floor(p * ns.z *ns.z);  //  mod(p,N*N)\n\n  vec4 x_ = floor(j * ns.z);\n  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)\n\n  vec4 x = x_ *ns.x + ns.yyyy;\n  vec4 y = y_ *ns.x + ns.yyyy;\n  vec4 h = 1.0 - abs(x) - abs(y);\n\n  vec4 b0 = vec4( x.xy, y.xy );\n  vec4 b1 = vec4( x.zw, y.zw );\n\n  vec4 s0 = floor(b0)*2.0 + 1.0;\n  vec4 s1 = floor(b1)*2.0 + 1.0;\n  vec4 sh = -step(h, vec4(0.0));\n\n  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;\n  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;\n\n  vec3 p0 = vec3(a0.xy,h.x);\n  vec3 p1 = vec3(a0.zw,h.y);\n  vec3 p2 = vec3(a1.xy,h.z);\n  vec3 p3 = vec3(a1.zw,h.w);\n\n//Normalise gradients\n  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));\n  p0 *= norm.x;\n  p1 *= norm.y;\n  p2 *= norm.z;\n  p3 *= norm.w;\n\n// Mix final noise value\n  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);\n  m = m * m;\n  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), \n                                dot(p2,x2), dot(p3,x3) ) );\n}\n\nfloat lines(vec2 uv, float offset){\n  return smoothstep(\n    ss1, ss1 + offset*0.9,\n    abs(hb*sin(uv.x*ss2) + offset*hb)\n  );\n}\n\nmat2 rotate2d(float angle){\n  return mat2(\n    cos(angle), -sin(angle),\n    sin(angle), cos(angle)\n\n  );\n}\nvoid main() {\n  float n = snoise(vPosition-vec3(0,0,-sc*5.));\n  vec3 color1 = hsb2rgb(vec3(0.9, 0.0, 0.9));\n  vec3 color5 = hsb2rgb(vec3(col1r, col1g, col1b));\n  vec3 color2 = hsb2rgb(vec3(col2r, col2g, col2b));\n  vec3 color4 = hsb2rgb(vec3(0.9,0.9,0.9));\n  vec3 color3 = hsb2rgb(vec3(0.,0.,0.));\n  vec2 baseUV = rotate2d(n)*vPosition.xy*ss3;\n  float basePattern = lines(baseUV, 0.5);\n  float secondPattern = lines(baseUV, 0.9);\n\n  vec3 baseColor = mix(color2,color1,basePattern);\n  vec3 secondBaseColor = mix(baseColor,color3,secondPattern);\n  vec3 thirdBaseColor = mix(secondBaseColor,color4,secondPattern);\n  vec3 fourthBaseColor = mix(thirdBaseColor,color5,secondPattern);\n    // gl_FragColor = vec4(0.,0.,1., 1.);\n\n    // vec4 myimage = texture(\n    //     uTexture,\n    //     vUv + 0.03*sin(vUv*1. + time) \n    // );\n\n    //  vec4 myimage = texture(\n    //     uTexture,\n    //     vUv + 0.003*cnoise(vec4((vUv.x*50. - time)*0.1), vec4(1.0)) \n    // );\n\n    // float sinePulse = 0.01*cnoise(vec4((vUv.x*50. - time)*0.1), vec4(1.0)) ;\n    gl_FragColor = vec4( vec3(fourthBaseColor),1.);\n    // gl_FragColor = vec4( sinePulse,0.,0.,1.);\n    // gl_FragColor = myimage;\n    // gl_FragColor = vec4( pulse,0.,0.,1.);\n}";
+module.exports = "#define GLSLIFY 1\nuniform float blur;\nuniform float ss1;\nuniform float ss2;\nuniform float ss3;\n\nuniform float hb;\nuniform float col1r;\nuniform float col1g;\nuniform float col1b;\nuniform float col2r;\nuniform float col2g;\nuniform float col2b;\nuniform sampler2D uTexture;\nuniform float sc;\nuniform float ba;\n\nvarying float pulse;\nvarying vec2 vUv;\nvarying vec3 vNormal;\nvarying vec3 vPosition;\n\nvec3 hsb2rgb( in vec3 c ){\n    vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),\n                             6.0)-3.0)-1.0,\n                     0.0,\n                     1.0 );\n    rgb = rgb*rgb*(3.0-2.0*rgb);\n    return c.z * mix( vec3(1.0), rgb, c.y);\n}\n\nfloat mod289(float x){return x - floor(x * (1.0 / 289.0)) * 289.0;}\nvec4 mod289(vec4 x){return x - floor(x * (1.0 / 289.0)) * 289.0;}\nvec4 perm(vec4 x){return mod289(((x * 32.0) + 1.0) * x);}\n\nfloat noise(vec3 p){\n    vec3 a = floor(p);\n    vec3 d = p - a;\n    d = d * d * (3.0 - 2.0 * d);\n\n    vec4 b = a.xxyy + vec4(0.0, 1.0, 0.0, 1.0);\n    vec4 k1 = perm(b.xyxy);\n    vec4 k2 = perm(k1.xyxy + b.zzww);\n\n    vec4 c = k2 + a.zzzz;\n    vec4 k3 = perm(c);\n    vec4 k4 = perm(c + 1.0);\n\n    vec4 o1 = fract(k3 * (1.0 / 41.0));\n    vec4 o2 = fract(k4 * (1.0 / 41.0));\n\n    vec4 o3 = o2 * d.z + o1 * (1.0 - d.z);\n    vec2 o4 = o3.yw * d.x + o3.xz * (1.0 - d.x);\n\n    return o4.y * d.y + o4.x * (1.0 - d.y);\n}\n\n// Simplex 2D noise\n//\nvec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }\n\nfloat noise(vec2 v){\n  const vec4 C = vec4(0.211324865405187, 0.366025403784439,\n           -0.577350269189626, 0.024390243902439);\n  vec2 i  = floor(v + dot(v, C.yy) );\n  vec2 x0 = v -   i + dot(i, C.xx);\n  vec2 i1;\n  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);\n  vec4 x12 = x0.xyxy + C.xxzz;\n  x12.xy -= i1;\n  i = mod(i, 289.0);\n  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))\n  + i.x + vec3(0.0, i1.x, 1.0 ));\n  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),\n    dot(x12.zw,x12.zw)), 0.0);\n  m = m*m ;\n  m = m*m ;\n  vec3 x = 2.0 * fract(p * C.www) - 1.0;\n  vec3 h = abs(x) - 0.5;\n  vec3 ox = floor(x + 0.5);\n  vec3 a0 = x - ox;\n  m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );\n  vec3 g;\n  g.x  = a0.x  * x0.x  + h.x  * x0.y;\n  g.yz = a0.yz * x12.xz + h.yz * x12.yw;\n  return 130.0 * dot(m, g);\n}\n//\tSimplex 3D Noise \n//\tby Ian McEwan, Ashima Arts\n//\nvec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}\nvec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}\n\nfloat snoise(vec3 v){ \n  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;\n  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);\n\n// First corner\n  vec3 i  = floor(v + dot(v, C.yyy) );\n  vec3 x0 =   v - i + dot(i, C.xxx) ;\n\n// Other corners\n  vec3 g = step(x0.yzx, x0.xyz);\n  vec3 l = 1.0 - g;\n  vec3 i1 = min( g.xyz, l.zxy );\n  vec3 i2 = max( g.xyz, l.zxy );\n\n  //  x0 = x0 - 0. + 0.0 * C \n  vec3 x1 = x0 - i1 + 1.0 * C.xxx;\n  vec3 x2 = x0 - i2 + 2.0 * C.xxx;\n  vec3 x3 = x0 - 1. + 3.0 * C.xxx;\n\n// Permutations\n  i = mod(i, 289.0 ); \n  vec4 p = permute( permute( permute( \n             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))\n           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) \n           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));\n\n// Gradients\n// ( N*N points uniformly over a square, mapped onto an octahedron.)\n  float n_ = 1.0/7.0; // N=7\n  vec3  ns = n_ * D.wyz - D.xzx;\n\n  vec4 j = p - 49.0 * floor(p * ns.z *ns.z);  //  mod(p,N*N)\n\n  vec4 x_ = floor(j * ns.z);\n  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)\n\n  vec4 x = x_ *ns.x + ns.yyyy;\n  vec4 y = y_ *ns.x + ns.yyyy;\n  vec4 h = 1.0 - abs(x) - abs(y);\n\n  vec4 b0 = vec4( x.xy, y.xy );\n  vec4 b1 = vec4( x.zw, y.zw );\n\n  vec4 s0 = floor(b0)*2.0 + 1.0;\n  vec4 s1 = floor(b1)*2.0 + 1.0;\n  vec4 sh = -step(h, vec4(0.0));\n\n  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;\n  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;\n\n  vec3 p0 = vec3(a0.xy,h.x);\n  vec3 p1 = vec3(a0.zw,h.y);\n  vec3 p2 = vec3(a1.xy,h.z);\n  vec3 p3 = vec3(a1.zw,h.w);\n\n//Normalise gradients\n  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));\n  p0 *= norm.x;\n  p1 *= norm.y;\n  p2 *= norm.z;\n  p3 *= norm.w;\n\n// Mix final noise value\n  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);\n  m = m * m;\n  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), \n                                dot(p2,x2), dot(p3,x3) ) );\n}\n\nfloat lines(vec2 uv, float offset){\n  return smoothstep(\n    ss1, ss1 + offset*0.9,\n    abs(hb*sin(uv.x*ss2) + offset*hb)\n  );\n}\n\nmat2 rotate2d(float angle){\n  return mat2(\n    cos(angle), -sin(angle),\n    sin(angle), cos(angle)\n\n  );\n}\nvoid main() {\n  float n = snoise(vPosition-vec3(0,0,-sc*5.));\n  vec3 color1 = hsb2rgb(vec3(0.9, 0.0, 1.0));\n  vec3 color5 = hsb2rgb(vec3(col1r, col1g, col1b));\n  vec3 color2 = hsb2rgb(vec3(col2r, col2g, col2b));\n  vec3 color4 = hsb2rgb(vec3(0.9,0.9,0.9));\n  vec3 color3 = hsb2rgb(vec3(0.3,0.,0.9));\n  vec2 baseUV = rotate2d(n)*vPosition.xy*ss3;\n  float basePattern = lines(baseUV, 0.5);\n  float secondPattern = lines(baseUV, 0.9);\n\n  vec3 baseColor = mix(color2,color1,basePattern);\n  vec3 secondBaseColor = mix(baseColor,color3,secondPattern);\n  vec3 thirdBaseColor = mix(secondBaseColor,color4,secondPattern);\n  vec3 fourthBaseColor = mix(thirdBaseColor,color5,secondPattern);\n    // gl_FragColor = vec4(0.,0.,1., 1.);\n\n    // vec4 myimage = texture(\n    //     uTexture,\n    //     vUv + 0.03*sin(vUv*1. + time) \n    // );\n\n    //  vec4 myimage = texture(\n    //     uTexture,\n    //     vUv + 0.003*cnoise(vec4((vUv.x*50. - time)*0.1), vec4(1.0)) \n    // );\n\n    // float sinePulse = 0.01*cnoise(vec4((vUv.x*50. - time)*0.1), vec4(1.0)) ;\n    gl_FragColor = vec4( vec3(fourthBaseColor),1.);\n    // gl_FragColor = vec4( sinePulse,0.,0.,1.);\n    // gl_FragColor = myimage;\n    // gl_FragColor = vec4( pulse,0.,0.,1.);\n}";
 },{}],"shaders/vertexBg.glsl":[function(require,module,exports) {
 module.exports = "#define GLSLIFY 1\nuniform float time;\nuniform float sc;\nuniform float ba;\nvarying float pulse;\n\nvarying vec3 vPosition;\n\nuniform vec2 pixels;\n\nvarying vec2 vUv;\nvarying vec3 vNormal;\n\nvoid main() {\n    vUv = uv;\n    vPosition = position;\n    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n}";
 },{}],"sounds/sound.mp3":[function(require,module,exports) {
@@ -44531,7 +44531,7 @@ var SketchBack = /*#__PURE__*/function () {
     this.container.appendChild(this.renderer.domElement);
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.001, 1000);
     var PI = 3.141592653589793238;
-    this.camera.position.set(0, 0, -16);
+    this.camera.position.set(0, 0, -27.52);
     this.time = 0;
     this.sc = 0;
     this.aaaa = 0;
@@ -44541,7 +44541,7 @@ var SketchBack = /*#__PURE__*/function () {
     this.col1 = 0x000000;
     this.aa = 0;
     this.set = {
-      hb: 0,
+      hb: 0.63,
       col1r: 0,
       col1g: 0,
       col1b: 0,
@@ -44549,9 +44549,9 @@ var SketchBack = /*#__PURE__*/function () {
       col2g: 1,
       col2b: 1,
       ss: 1,
-      ss1: 0.1,
-      ss2: 10,
-      ss3: 0.1
+      ss1: 0.04,
+      ss2: 28.01,
+      ss3: 0.16
     };
     this.isPlaying = true;
     this.addObjects();
@@ -44669,24 +44669,24 @@ var SketchBack = /*#__PURE__*/function () {
       this.scene.add(this.plane);
       this.plane.addEventListener('click', audioplay);
       this.dat = require('dat.gui');
-      this.gui = new this.dat.GUI();
-      this.gui.add(this.set, "hb", 0, 1, 0.01).name('Heart Beat');
-      this.gui.add(this.set, "col1r", 0, 1, 0.01).name('Color 1 R');
-      this.gui.add(this.set, "col1g", 0, 1, 0.01).name('Color 1 G');
-      this.gui.add(this.set, "col1b", 0, 1, 0.01).name('Color 1 B');
-      this.gui.add(this.set, "col2r", 0, 1, 0.01).name('Color 2 R');
-      this.gui.add(this.set, "col2g", 0, 1, 0.01).name('Color 2 G');
-      this.gui.add(this.set, "col2b", 0, 1, 0.01).name('Color 2 B');
-      this.gui.add(this.set, "ss1", 0, 1, 0.01).name('SS1');
-      this.gui.add(this.set, "ss2", 10, 50, 0.01).name('SS2');
-      this.gui.add(this.set, "ss3", 0.01, 0.2, 0.01).name('SS3');
-      this.gui.add(this.camera.position, "z", -35, 16, 0.01).name('Zoom');
+      this.gui = new this.dat.GUI(); // this.gui.add(this.set, "col1r", 0, 1, 0.01).name('Color 1 R');
+      // this.gui.add(this.set, "col1g", 0, 1, 0.01).name('Color 1 G');
+      // this.gui.add(this.set, "col1b", 0, 1, 0.01).name('Color 1 B');
+      // this.gui.add(this.set, "col2r", 0, 1, 0.01).name('Color 2 R');
+      // this.gui.add(this.set, "col2g", 0, 1, 0.01).name('Color 2 G');
+      // this.gui.add(this.set, "col2b", 0, 1, 0.01).name('Color 2 B');
+
       this.obj = {
         toggle_sound: function toggle_sound() {
           audioplay();
         }
       };
-      this.gui.add(this.obj, 'toggle_sound'); // this.cubeFolder = this.gui.addFolder('Cube')
+      this.gui.add(this.obj, 'toggle_sound');
+      this.gui.add(this.set, "hb", 0, 1, 0.01).name('SS0');
+      this.gui.add(this.set, "ss1", 0, 1, 0.01).name('SS1');
+      this.gui.add(this.set, "ss2", 10, 50, 0.01).name('SS2');
+      this.gui.add(this.set, "ss3", 0.01, 0.2, 0.001).name('SS3');
+      this.gui.add(this.camera.position, "z", -35, 16, 0.01).name('Zoom'); // this.cubeFolder = this.gui.addFolder('Cube')
     }
   }, {
     key: "stop",
@@ -44713,12 +44713,18 @@ var SketchBack = /*#__PURE__*/function () {
       // this.material.uniforms.time.value = this.time;
 
       this.material.uniforms.hb.value = 1 - this.set.hb;
-      this.material.uniforms.col1r.value = this.set.col1r;
-      this.material.uniforms.col1g.value = this.set.col1g;
-      this.material.uniforms.col1b.value = this.set.col1b;
-      this.material.uniforms.col2r.value = this.set.col2r;
-      this.material.uniforms.col2g.value = this.set.col2g;
-      this.material.uniforms.col2b.value = this.set.col2b;
+      this.material.uniforms.col1r.value = 0.95; //this.set.col1r;
+
+      this.material.uniforms.col1g.value = 0.82; //this.set.col1g;
+
+      this.material.uniforms.col1b.value = 0.9; //this.set.col1b;
+
+      this.material.uniforms.col2r.value = 0.54; //this.set.col2r;
+
+      this.material.uniforms.col2g.value = 0.78; //this.set.col2g;
+
+      this.material.uniforms.col2b.value = 1.0; //this.set.col2b;
+
       this.material.uniforms.sc.value += this.aa / 100;
       this.material.uniforms.blur.value = this.aa;
       this.material.uniforms.ss1.value = this.set.ss1;
